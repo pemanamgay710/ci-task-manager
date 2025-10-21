@@ -26,4 +26,7 @@ jobs:
 
       - name: Run tests
         run: |
+          cd tests
           pytest --maxfail=1 --disable-warnings -q
+
+          
