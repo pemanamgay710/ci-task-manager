@@ -1,0 +1,7 @@
+{% extends 'base.html' %}
+{% block title %}Welcome — Task Manager{% endblock %}
+{% block content %}
+  <h1>Welcome to Task Manager</h1>
+  <p>Simple app to add your personal tasks.</p>
+  <p><a href="{{ url_for('register') }}">Get started — Register</a></p>
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+  <h2>Your Tasks</h2>
+  <form method="post">
+    {{ form.hidden_tag() }}
+    <p>{{ form.title.label }} {{ form.title() }} {{ form.submit() }}</p>
+  </form>
+  <ul>
+    {% for task in tasks %}
+      <li>
+        {{ task.title }}
+        <form method="post" action="{{ url_for('delete_task', task_id=task.id) }}" style="display:inline">
+          <button type="submit">Delete</button>
+        </form>
+      </li>
+    {% else %}
+      <li>No tasks yet.</li>
+    {% endfor %}
+  </ul>
+{% endblock %}
