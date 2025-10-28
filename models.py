@@ -1,51 +1,22 @@
-from sqlalchemy import create_engine, Column, Integer, String, ForeignKey
-from sqlalchemy.orm import declarative_base, sessionmaker, relationship
-import os
+from flask_sqlalchemy import SQLAlchemy
 
-Base = declarative_base()
-SessionLocal = None
-_engine = None
+db = SQLAlchemy()
 
-class User(Base):
+class User(db.Model):
     __tablename__ = 'users'
-    id = Column(Integer, primary_key=True)
-    username = Column(String, unique=True, nullable=False)
-    password_hash = Column(String, nullable=False)
-    tasks = relationship('Task', back_populates='user')
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(200), nullable=False)
+    tasks = db.relationship('Task', back_populates='user', cascade="all, delete-orphan", lazy=True)
 
-    # Flask-Login required attributes
-    def is_active(self):
-        return True
+    def check_password(self, password_plain):
+        from werkzeug.security import check_password_hash
+        return check_password_hash(self.password_hash, password_plain)
 
-    def is_authenticated(self):
-        return True
-
-    def is_anonymous(self):
-        return False
-
-    def get_id(self):
-        return str(self.id)
-
-class Task(Base):
+class Task(db.Model):
     __tablename__ = 'tasks'
-    id = Column(Integer, primary_key=True)
-    title = Column(String, nullable=False)
-    user_id = Column(Integer, ForeignKey('users.id'))
-    user = relationship('User', back_populates='tasks')
-
-
-def db_init(app):
-    global _engine, SessionLocal
-    db_path = app.config.get('DATABASE', 'app.db')
-    _engine = create_engine(f'sqlite:///{db_path}', connect_args={"check_same_thread": False})
-    SessionLocal = sessionmaker(bind=_engine)
-    Base.metadata.create_all(_engine)
-
-
-def get_db_session():
-    global SessionLocal
-    if SessionLocal is None:
-        db_path = os.environ.get('DATABASE', 'app.db')
-        engine = create_engine(f'sqlite:///{db_path}', connect_args={"check_same_thread": False})
-        SessionLocal = sessionmaker(bind=engine)
-    return SessionLocal()
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(200), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user = db.relationship('User', back_populates='tasks')

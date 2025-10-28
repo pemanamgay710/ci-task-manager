@@ -1,12 +1,9 @@
 venv/
 __pycache__/
-instance/
-*.sqlite3
 *.pyc
+instance/
 .env
-
-# VSCode
+*.sqlite3
+app.db
 .vscode/
-
-# Mac
 .DS_Store
