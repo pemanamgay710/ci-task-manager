@@ -1,28 +1,30 @@
 import os
-from flask import Flask, render_template, redirect, url_for, flash, request
-from itsdangerous import URLSafeTimedSerializer
-from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import timedelta
+from flask import Flask, render_template, redirect, url_for, flash, request, make_response
+from werkzeug.security import generate_password_hash
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import CSRFProtect
+from itsdangerous import URLSafeTimedSerializer
 from flask_mail import Mail, Message
+from flask_jwt_extended import (
+    JWTManager, create_access_token, set_access_cookies,
+    unset_jwt_cookies, jwt_required, get_jwt_identity, verify_jwt_in_request
+)
 
-# import models and forms
+# Import models and forms
 from models import db, User, Task
 from forms import RegistrationForm, LoginForm, TaskForm, ForgotForm, ResetForm
-
-# Simple global state (no sessions)
-current_user_id = None
 
 
 def create_app(test_config=None):
     app = Flask(__name__, static_folder='static', template_folder='templates')
 
-    # --- Basic config ---
+    # ------------------ Basic Config ------------------
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-secret-key')
     app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE', 'sqlite:///app.db')
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-    # --- Email config ---
+    # ------------------ Email Config ------------------
     app.config['MAIL_SERVER'] = 'smtp.gmail.com'
     app.config['MAIL_PORT'] = 587
     app.config['MAIL_USE_TLS'] = True
@@ -30,24 +32,54 @@ def create_app(test_config=None):
     app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD', 'your_email_password')
     app.config['MAIL_DEFAULT_SENDER'] = app.config['MAIL_USERNAME']
 
-    # Init extensions
+    # ------------------ JWT Config ------------------
+    app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY', 'jwt-secret')
+    app.config['JWT_TOKEN_LOCATION'] = ['cookies']
+    app.config['JWT_COOKIE_SECURE'] = False  # True in production (HTTPS)
+    app.config['JWT_ACCESS_COOKIE_PATH'] = '/'
+    app.config['JWT_COOKIE_SAMESITE'] = 'Lax'
+    app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(minutes=20)
+    app.config['JWT_COOKIE_CSRF_PROTECT'] = False  # Disable JWT CSRF (we use HTML forms)
+
+    # ------------------ Initialize Extensions ------------------
     db.init_app(app)
-    CSRFProtect(app)
+    jwt = JWTManager(app)
+    @jwt.expired_token_loader
+    def expired_token_callback(jwt_header, jwt_payload):
+        flash("Your session has expired. Please log in again.", "warning")
+        resp = make_response(redirect(url_for('login')))
+        unset_jwt_cookies(resp)
+        return resp
+
+    
+    csrf = CSRFProtect(app)  # ✅ Create reference for route exemption
     mail = Mail(app)
     ts = URLSafeTimedSerializer(app.config['SECRET_KEY'])
 
-    # Create DB if not testing
+    # ------------------ Create Database ------------------
     if not app.config.get('TESTING', False):
         with app.app_context():
             db.create_all()
 
-    # ==================== ROUTES ==================== #
+    # ------------------ Context Processor ------------------
+    @app.context_processor
+    def inject_user():
+        """Injects current user into templates if JWT exists."""
+        try:
+            verify_jwt_in_request(optional=True)
+            user_id = get_jwt_identity()
+            if user_id:
+                user = User.query.get(int(user_id))
+                return {'current_user': user}
+        except Exception:
+            pass
+        return {'current_user': None}
+
+    # ------------------ Routes ------------------
 
     @app.route('/')
     def index():
-        global current_user_id
-        user = User.query.get(current_user_id) if current_user_id else None
-        return render_template('index.html', current_user=user)
+        return render_template('index.html')
 
     # ---------- Register ----------
     @app.route('/register', methods=['GET', 'POST'])
@@ -62,11 +94,7 @@ def create_app(test_config=None):
                 return redirect(url_for('register'))
 
             hashed_pw = generate_password_hash(form.password.data)
-            new_user = User(
-                username=form.username.data,
-                email=form.email.data,
-                password_hash=hashed_pw
-            )
+            new_user = User(username=form.username.data, email=form.email.data, password_hash=hashed_pw)
             db.session.add(new_user)
             db.session.commit()
             flash('Registration successful! Please log in.', 'success')
@@ -76,36 +104,35 @@ def create_app(test_config=None):
     # ---------- Login ----------
     @app.route('/login', methods=['GET', 'POST'])
     def login():
-        global current_user_id
         form = LoginForm()
         if form.validate_on_submit():
             user = User.query.filter_by(username=form.username.data).first()
             if user and user.check_password(form.password.data):
-                current_user_id = user.id
+                # Convert user ID to string for JWT
+                access_token = create_access_token(identity=str(user.id))
+                resp = make_response(redirect(url_for('dashboard')))
+                set_access_cookies(resp, access_token)
                 flash('Logged in successfully!', 'success')
-                return redirect(url_for('dashboard'))
-            flash('Invalid username or password', 'danger')
+                return resp
+            else:
+                flash('Invalid username or password.', 'danger')
         return render_template('login.html', form=form)
 
     # ---------- Logout ----------
-    @app.route('/logout', methods=['GET', 'POST'])
+    @app.route('/logout')
     def logout():
-        global current_user_id
-        current_user_id = None
+        resp = make_response(redirect(url_for('index')))
+        unset_jwt_cookies(resp)
         flash('Logged out successfully.', 'info')
-        return redirect(url_for('index'))
-
+        return resp
 
     # ---------- Dashboard ----------
     @app.route('/dashboard', methods=['GET', 'POST'])
+    @jwt_required()
     def dashboard():
-        global current_user_id
-        if not current_user_id:
-            flash('Please log in first.', 'warning')
-            return redirect(url_for('login'))
-
+        user_id = int(get_jwt_identity())
+        user = User.query.get(user_id)
         form = TaskForm()
-        user = User.query.get(current_user_id)
 
         if form.validate_on_submit():
             task = Task(title=form.title.data, user_id=user.id)
@@ -117,22 +144,40 @@ def create_app(test_config=None):
         tasks = Task.query.filter_by(user_id=user.id).all()
         return render_template('dashboard.html', tasks=tasks, form=form, current_user=user)
 
+    # ---------- Edit Task ----------
+    @app.route('/task/edit/<int:task_id>', methods=['GET', 'POST'])
+    @jwt_required()
+    def edit_task(task_id):
+        user_id = int(get_jwt_identity())
+        task = Task.query.get(task_id)
+        if not task or task.user_id != user_id:
+            flash('Not authorized.', 'danger')
+            return redirect(url_for('dashboard'))
+
+        if request.method == 'POST':
+            new_title = request.form.get('new_title')
+            if new_title:
+                task.title = new_title
+                db.session.commit()
+                flash('Task updated successfully!', 'success')
+                return redirect(url_for('dashboard'))
+
+        return render_template('edit_task.html', task=task)
+
     # ---------- Delete Task ----------
     @app.route('/task/delete/<int:task_id>', methods=['POST'])
+    @jwt_required()
+    @csrf.exempt  # ✅ Correct modern way to disable CSRF for this route
     def delete_task(task_id):
-        global current_user_id
-        if not current_user_id:
-            flash('Please log in first.', 'warning')
-            return redirect(url_for('login'))
-
+        user_id = int(get_jwt_identity())
         task = Task.query.get(task_id)
-        if not task or task.user_id != current_user_id:
+        if not task or task.user_id != user_id:
             flash('Not authorized.', 'danger')
             return redirect(url_for('dashboard'))
 
         db.session.delete(task)
         db.session.commit()
-        flash('Task deleted.', 'info')
+        flash('Task deleted successfully!', 'info')
         return redirect(url_for('dashboard'))
 
     # ---------- Forgot Password ----------
@@ -144,18 +189,17 @@ def create_app(test_config=None):
             if user:
                 token = ts.dumps(user.email, salt='recover-key')
                 reset_url = url_for('reset_with_token', token=token, _external=True)
-
                 try:
                     msg = Message('Password Reset Request', recipients=[user.email])
-                    msg.body = f"Click to reset your password: {reset_url}"
+                    msg.body = f"Click here to reset your password: {reset_url}"
                     mail.send(msg)
-                    flash('Password reset email sent!', 'info')
+                    flash('Password reset link sent to your email.', 'info')
                 except Exception as e:
-                    print("Email failed:", e)
-                    flash('Email sending failed. Check console.', 'warning')
-                    print("Manual reset link:", reset_url)
+                    print("Email sending failed:", e)
+                    flash('Email sending failed. Reset link printed to console.', 'warning')
+                    print("Reset URL:", reset_url)
             else:
-                flash('No user with that email.', 'danger')
+                flash('No account with that email address.', 'danger')
         return render_template('forgot.html', form=form)
 
     # ---------- Reset Password ----------
@@ -164,7 +208,7 @@ def create_app(test_config=None):
         try:
             email = ts.loads(token, salt='recover-key', max_age=3600)
         except Exception:
-            flash('Invalid or expired reset link.', 'danger')
+            flash('The reset link is invalid or expired.', 'danger')
             return redirect(url_for('forgot'))
 
         form = ResetForm()
@@ -173,14 +217,14 @@ def create_app(test_config=None):
             if user:
                 user.password_hash = generate_password_hash(form.password.data)
                 db.session.commit()
-                flash('Password updated! Please log in.', 'success')
+                flash('Password updated successfully!', 'success')
                 return redirect(url_for('login'))
         return render_template('reset.html', form=form)
 
     return app
 
 
-# ---------- Run ----------
+# ------------------ Run App ------------------
 if __name__ == '__main__':
     app = create_app()
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=True)
