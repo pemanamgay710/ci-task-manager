@@ -15,11 +15,10 @@ A lightweight **Task Manager** web application built using **Flask**, featuring:
 ## 🚀 Quick Start (Local Development)
 
 ### 1️⃣ Clone the Repository
-```bash
 git clone https://github.com/pemanamgay710/ci-task-manager.git
 cd ci-task-manager
 
-###Application Features
+### Application Features
 | Feature             | Description                                                            |
 | ------------------- | ---------------------------------------------------------------------- |
 | **Register**        | Create a new user account (email, username, password)                  |
@@ -32,20 +31,24 @@ cd ci-task-manager
 | **CI/CD**           | Runs tests, linting, and Docker build automatically via GitHub Actions |
 | **Dockerized**      | Easily deploy anywhere using Docker                                    |
 
-##🐳Running the App with Docker
-###Build the Docker Image
+## 🐳Running the App with Docker
+### Build the Docker Image
+
 sudo docker build -t flask-task-manager:latest .
-##Run the Container
+
+## Run the Container
 sudo docker run -p 5000:5000 flask-task-manager:latest
 
 
-#☁️ Deploy via Docker Hub
-###You can directly pull and run the image without building it:
+# ☁️ Deploy via Docker Hub
+### You can directly pull and run the image without building it:
+
 sudo docker pull pemanamgay710/flask-task-manager:latest
 sudo docker run -p 5000:5000 pemanamgay710/flask-task-manager:latest
 
 
-#🧱 Project Structure
+# 🧱 Project Structure
+
 Task Manager/
 │
 ├── static/
@@ -72,7 +75,8 @@ Task Manager/
 └── README.md
 
 
-#🧑‍💻 Technologies Used
+# 🧑‍💻 Technologies Used
+
 | Category             | Technology                  |
 | -------------------- | --------------------------- |
 | **Backend**          | Flask (Python)              |
@@ -83,3 +87,7 @@ Task Manager/
 | **Testing**          | Pytest                      |
 | **CI/CD**            | GitHub Actions              |
 | **Containerization** | Docker                      |
+
+# 👨‍💻 Author
+Pema Namgay
+💻 
