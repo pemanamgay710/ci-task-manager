@@ -15,10 +15,16 @@ A lightweight **Task Manager** web application built using **Flask**, featuring:
 ## 🚀 Quick Start (Local Development)
 
 ### 1️⃣ Clone the Repository
-- git clone https://github.com/pemanamgay710/ci-task-manager.git
-- cd ci-task-manager
 
-### Application Features
+```bash
+git clone https://github.com/pemanamgay710/ci-task-manager.git
+cd ci-task-manager
+```
+
+---
+
+## 📋 Application Features
+
 | Feature             | Description                                                            |
 | ------------------- | ---------------------------------------------------------------------- |
 | **Register**        | Create a new user account (email, username, password)                  |
@@ -31,24 +37,38 @@ A lightweight **Task Manager** web application built using **Flask**, featuring:
 | **CI/CD**           | Runs tests, linting, and Docker build automatically via GitHub Actions |
 | **Dockerized**      | Easily deploy anywhere using Docker                                    |
 
-## 🐳Running the App with Docker
+---
+
+## 🐳 Running the App with Docker
+
 ### Build the Docker Image
 
+```bash
 sudo docker build -t flask-task-manager:latest .
+```
 
-## Run the Container
+### Run the Container
+
+```bash
 sudo docker run -p 5000:5000 flask-task-manager:latest
+```
 
+---
 
-# ☁️ Deploy via Docker Hub
-### You can directly pull and run the image without building it:
+## ☁️ Deploy via Docker Hub
 
+You can directly pull and run the image without building it:
+
+```bash
 sudo docker pull pemanamgay710/flask-task-manager:latest
 sudo docker run -p 5000:5000 pemanamgay710/flask-task-manager:latest
+```
 
+---
 
-# 🧱 Project Structure
+## 🧱 Project Structure
 
+```
 Task Manager/
 │
 ├── static/
@@ -59,7 +79,7 @@ Task Manager/
 │   ├── index.html
 │   ├── login.html
 │   ├── register.html
-│   ├── dashboard.html
+│   └── dashboard.html
 │
 ├── tests/
 │   └── test_app.py
@@ -73,9 +93,11 @@ Task Manager/
 │   └── workflows/
 │       └── ci.yml
 └── README.md
+```
 
+---
 
-# 🧑‍💻 Technologies Used
+## 🧑‍💻 Technologies Used
 
 | Category             | Technology                  |
 | -------------------- | --------------------------- |
@@ -88,6 +110,9 @@ Task Manager/
 | **CI/CD**            | GitHub Actions              |
 | **Containerization** | Docker                      |
 
-# 👨‍💻 Author
-Pema Namgay
-💻 
+---
+
+## 👨‍💻 Author
+
+**Pema Namgay**  
+💻 [GitHub](https://github.com/pemanamgay710)
