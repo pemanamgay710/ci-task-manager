@@ -15,8 +15,8 @@ A lightweight **Task Manager** web application built using **Flask**, featuring:
 ## 🚀 Quick Start (Local Development)
 
 ### 1️⃣ Clone the Repository
-git clone https://github.com/pemanamgay710/ci-task-manager.git
-cd ci-task-manager
+- git clone https://github.com/pemanamgay710/ci-task-manager.git
+- cd ci-task-manager
 
 ### Application Features
 | Feature             | Description                                                            |
